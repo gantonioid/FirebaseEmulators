@@ -1,0 +1,21 @@
+{
+    "rules": {
+        ".read": false,
+        ".write": false,
+        "Workers": {
+            ".indexOn": [
+                "hostname",
+                "active",
+                "running"
+            ]
+        },
+        "Sessions": {
+            ".indexOn": [
+                "workerHostname",
+                "workerId",
+                "finished"
+            ],
+            ".read": "data.child('user_id').val() == auth.uid"
+        }
+    }
+}

@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+    match /databases/{database}/documents {
+        //***************FUNCIONES REUTILIZABLES
+        function isLogged() {
+            return request.auth != null;
+        }
+        function isAdmin() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+        }
+        function isReportReader() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isReportReader == true;
+        }
+        function isWaiter() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isWaiter == true;
+        }
+        function isRestaurant() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isRestaurant == true;
+        }
+        function isUserManager() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isUserManager == true;
+        }
+        function isTerrazaManager() {
+            return isLogged() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isTerrazaManager == true;
+        }
+
+        function getAssignedLocation() {
+            return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.locationId;
+        }
+
+        function getAssignedRestaurant() {
+            return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.restaurantId;
+        }
+
+
+        //***************REGLAS EN COLECCIONES
+
+        match /currentTimestamp/currentTimestamp {
+            allow read, write: if true;
+        }
+
+        //Location es una terraza, sobre las terrazas solo los admins pueden hacer "todo"
+        match /locations/{document=**} {
+            allow read: if  (
+            	isAdmin() || isWaiter() || isReportReader() || isUserManager() || isTerrazaManager() ||
+            	request.auth.provider == 'anonymous'
+            );
+            allow write: if isAdmin() || isTerrazaManager();
+        }
+
+        // Los restaurantes y meseros 
+        match /locations/{$locationId} {
+          match /restaurants/{$restaurantId} {
+              allow read;
+              allow write: if isRestaurant() && 
+              getAssignedLocation() == $locationId &&
+              getAssignedRestaurant() == $restaurantId;
+          }
+
+           match /restaurants/{$restaurantId}/products/{$productId} {
+              allow read;
+              allow write: if isRestaurant() && 
+              getAssignedLocation() == $locationId &&
+              getAssignedRestaurant() == $restaurantId;
+          }
+        }
+
+        match /orders/{$orderid} {
+            allow read: if isRestaurant() || isWaiter();
+            allow create: if (isRestaurant() || isWaiter());
+            allow delete: if (isRestaurant() || isWaiter());
+            allow update: if (isRestaurant() || isWaiter()) && (
+            	//Que el statusId no se vaya para atrás
+              resource.data.statusId <= request.resource.data.statusId
+            );
+        }
+        
+        match /carts/{$orderid} {
+            allow read: if isRestaurant() || isWaiter();
+            allow write: if isRestaurant() || isWaiter();
+        }
+
+        match /pagos/{$pagoid} {
+            allow read: if isAdmin() || isReportReader();
+        }  
+
+        match /tickets/{$ticketid} {
+            allow read: if isAdmin() || isReportReader() || isWaiter();
+            allow create: if isAdmin() || isReportReader() || isWaiter();
+            allow update: if isAdmin() || isReportReader() || isWaiter();
+            allow delete: if (isAdmin() || isReportReader() || isWaiter() || isRestaurant()) &&
+            									resource.data.paid != true;
+        }
+
+        //Los admins pueden leer a todos los usuarios
+        match /users/{document=**} {
+            allow read: if true;//if isAdmin() || isWaiter();
+            allow write: if isAdmin() || isUserManager();
+        }
+
+        //Los usuarios individuales solo pueden leer la info que les pertenece
+        //|| isLogged() && request.auth.uid == resource.data.id
+        //Para poder hacer trasferencia de mesas es necesario que los meseros puedan leer esta colleccion
+        match /users/{userId} {
+            allow read: if true;//isWaiter() || isAdmin() || request.auth.uid == resource.data.id;
+            allow write: if isAdmin();
+        }
+        
+        match /orderCancel/{$orderCancelId} {
+            allow read, write: if isAdmin() || isWaiter();
+        }
+        
+        match /orderTransfer/{$orderTransferId} {
+            allow read, write: if isAdmin() || isWaiter();
+        }
+        
+        
+        //Reglas para una colección de prueba
+        match /z_test_isida/{$orderid} {
+        	allow write: if (
+          	resource.data.statusId <= request.resource.data.statusId
+          )
+        }
+    }
+}
