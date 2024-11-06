@@ -2,7 +2,7 @@
 
 > https://firebase.google.com/docs/emulator-suite
 
-Para tener una buena práctica de "no probar en producción" podemos usar los emuladores de los servicios de Firebase, lo cual replica el funcionamiento de la base de datos, cloud functions, storage y otros servicios en un entorno local, lo cual podría evitarnos el problema de hacer deploy de código defectuoso.
+Para tener una buena práctica de "no probar en producción" podemos usar los emuladores de los servicios de Firebase, lo cual replica el funcionamiento de la base de datos, cloud functions, storage y otros servicios en un entorno local. Esto podría evitarnos el problema de hacer deploy de código defectuoso.
 
 La configuración de los emuladores se pone en el archivo `firebase.json` del proyecto, el cual puede indicar rutas a archivos que especifican las reglas de seguridad y los índices (en el caso de firestore)
 
@@ -54,12 +54,16 @@ Ejemplos de los archivos
 - [database.rules.json](./docs/database.rules.json)
 - [firestore.rules](./docs/firestore.rules)
 - [firestore.indexes.json](./docs/firestore.indexes.json)
-- [storage.rules.json](./docs/storage.rules)
+- [storage.rules](./docs/storage.rules)
 
 Los archivos de indexes podemos obtenerlos mediante CLI, de manera similar en la que podemos hacer deploy
 
 Ejemplo, en un escenario donde queremos pasar los indexes del ambiente dev al ambiente qa
 ```ps1
+## Prerequisitos:
+## firebase login
+## ubicarse en un directorio con los archivos firebaserc.json y firebase.json
+
 # descargar indexes en archivo local
 firebase use dev
 firebase firestore:indexes > firestore.indexes.json
@@ -132,7 +136,7 @@ Luego, en el archivo `functions/package.json` debemos tener dos scripts
 }
 ```
 
-Con eso es suficiente para poder hacer debugging de un proyecto de functions, para poner breakpoints y ver lo que se va ejecutando paso a paso.
+Con eso es suficiente para poder hacer debugging de un proyecto de functions, para poner breakpoints y ver lo que se va ejecutando paso a paso. Lo que hago es que en una terminal ejecute el script `watch` y en otra el `debug`.
 
 #### Debugging con data importada
 Para esto, necesitamos obtener la data... eso se puede hacer del firestore en GCP, se genera un export de la base de datos hacia un bucket de storage y lo tenemos que descargar.
